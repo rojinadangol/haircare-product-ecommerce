@@ -1,0 +1,251 @@
+<?php require_once 'admin_check.php'; ?>
+<?php
+// 🔹 Date Range Filter
+$dateFrom = $_GET['from'] ?? date('Y-m-01');
+$dateTo   = $_GET['to'] ?? date('Y-m-d');
+
+// 🔹 Category Analytics Query
+$catStmt = $pdo->prepare("
+    SELECT 
+        p.category,
+        COUNT(DISTINCT o.id) as orders,
+        SUM(oi.quantity) as units,
+        SUM(oi.quantity * oi.price) as revenue,
+        AVG(oi.price) as avg_price
+    FROM orders o
+    JOIN order_items oi ON o.id = oi.order_id
+    JOIN products p ON oi.product_id = p.id
+    WHERE o.created_at BETWEEN ? AND ? 
+      AND o.status IN ('confirmed','processing','shipped','delivered')
+    GROUP BY p.category
+    ORDER BY revenue DESC
+");
+$catStmt->execute([$dateFrom, $dateTo]);
+$categoryStats = $catStmt->fetchAll();
+
+// 🔹 Overall Stats
+$overall = $pdo->prepare("
+    SELECT 
+        COUNT(DISTINCT o.id) as total_orders,
+        SUM(oi.quantity) as total_units,
+        SUM(oi.quantity * oi.price) as total_revenue
+    FROM orders o
+    JOIN order_items oi ON o.id = oi.order_id
+    WHERE o.created_at BETWEEN ? AND ? 
+      AND o.status IN ('confirmed','processing','shipped','delivered')
+");
+$overall->execute([$dateFrom, $dateTo]);
+$totals = $overall->fetch();
+
+// 🔹 Top Products by Category
+$topProducts = [];
+foreach(['shampoo','conditioner','treatment','hair oil'] as $cat) {
+    $stmt = $pdo->prepare("
+        SELECT p.name, SUM(oi.quantity) as sold, SUM(oi.quantity * oi.price) as rev
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE p.category = ? AND o.created_at BETWEEN ? AND ?
+          AND o.status IN ('confirmed','processing','shipped','delivered')
+        GROUP BY p.id ORDER BY sold DESC LIMIT 3
+    ");
+    $stmt->execute([$cat, $dateFrom, $dateTo]);
+    $topProducts[$cat] = $stmt->fetchAll();
+}
+
+// 🔹 Stock Health per Category
+$stockStmt = $pdo->prepare("
+    SELECT category, 
+           COUNT(*) as total_products,
+           SUM(CASE WHEN stock_quantity = 0 THEN 1 ELSE 0 END) as out_of_stock,
+           SUM(CASE WHEN stock_quantity <= 5 AND stock_quantity > 0 THEN 1 ELSE 0 END) as low_stock
+    FROM products GROUP BY category
+");
+$stockStmt->execute();
+$stockStats = $stockStmt->fetchAll(PDO::FETCH_ASSOC);
+$stockByCat = array_column($stockStats, null, 'category');
+
+// 🔹 CSV Export Handler
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="category-analytics-' . date('Y-m-d') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['Category', 'Orders', 'Units Sold', 'Revenue', 'Avg Price']);
+    foreach ($categoryStats as $row) {
+        fputcsv($out, [
+            ucfirst($row['category']),
+            $row['orders'],
+            $row['units'],
+            '$' . number_format($row['revenue'], 2),
+            '$' . number_format($row['avg_price'], 2)
+        ]);
+    }
+    fclose($out);
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics | Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root{--bg:#F5F1EB;--card:#FFF;--accent:#800000;--accent-h:#5C0000;--txt:#2C1810;--mut:#6B4C4C;--bdr:#E6D5D5;--light:#F4EAEA;--success:#4A7C59;--warning:#E65100;--danger:#C62828;}
+        *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif;}
+        body{background:var(--bg);color:var(--txt);padding:2rem;}
+        .container{max-width:1200px;margin:0 auto;}
+        h1{margin-bottom:1rem;color:var(--accent);}
+        
+        /* Filters */
+        .filters{background:var(--card);padding:1rem;border-radius:8px;border:1px solid var(--bdr);margin-bottom:1.5rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;}
+        .filters input{padding:.5rem;border:1px solid var(--bdr);border-radius:6px;}
+        .filters button{background:var(--accent);color:#fff;padding:.5rem 1rem;border:none;border-radius:6px;cursor:pointer;}
+        .filters button:hover{background:var(--accent-h);}
+        .export-btn{background:var(--success);margin-left:auto;}
+        
+        /* Stats Grid */
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem;}
+        .stat-card{background:var(--card);padding:1.2rem;border-radius:8px;border:1px solid var(--bdr);text-align:center;}
+        .stat-card h3{font-size:.85rem;color:var(--mut);margin-bottom:.3rem;}
+        .stat-card p{font-size:1.8rem;font-weight:700;color:var(--accent);}
+        
+        /* Charts */
+        .charts{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;}
+        .chart-box{background:var(--card);padding:1rem;border-radius:8px;border:1px solid var(--bdr);}
+        .chart-box h3{margin-bottom:1rem;font-size:1rem;color:var(--txt);}
+        
+        /* Tables */
+        table{width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden;border:1px solid var(--bdr);margin-bottom:1.5rem;}
+        th,td{padding:.9rem;text-align:left;border-bottom:1px solid var(--bdr);}
+        th{background:var(--light);color:var(--accent);font-size:.8rem;text-transform:uppercase;}
+        .badge{padding:.2rem .5rem;border-radius:4px;font-size:.75rem;font-weight:600;}
+        .badge.success{background:#E8F5E9;color:var(--success);}
+        .badge.warning{background:#FFF3E0;color:var(--warning);}
+        .badge.danger{background:#FDECEA;color:var(--danger);}
+        
+        /* Top Products */
+        .top-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;}
+        .top-card{background:var(--card);padding:1rem;border-radius:8px;border:1px solid var(--bdr);}
+        .top-card h4{margin-bottom:.8rem;color:var(--accent);font-size:1rem;}
+        .top-card ol{padding-left:1.2rem;}
+        .top-card li{margin-bottom:.4rem;font-size:.9rem;}
+        .top-card small{color:var(--mut);}
+        
+        @media(max-width:900px){.charts{grid-template-columns:1fr;}.filters{flex-direction:column;align-items:stretch;}.export-btn{margin-left:0;}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Category Business Analytics</h1>
+        
+        <!-- Date Filter + Export -->
+        <form class="filters" method="GET">
+            <label>From: <input type="date" name="from" value="<?= htmlspecialchars($dateFrom) ?>"></label>
+            <label>To: <input type="date" name="to" value="<?= htmlspecialchars($dateTo) ?>"></label>
+            <button type="submit">Apply</button>
+            <a href="?from=<?= $dateFrom ?>&to=<?= $dateTo ?>&export=csv" class="export-btn" style="padding:.5rem 1rem;border-radius:6px;text-decoration:none;color:#fff;">📥 Export CSV</a>
+        </form>
+        
+        <!-- Overall Stats -->
+        <div class="stats-grid">
+            <div class="stat-card"><h3>Total Orders</h3><p><?= number_format($totals['total_orders'] ?? 0) ?></p></div>
+            <div class="stat-card"><h3>Units Sold</h3><p><?= number_format($totals['total_units'] ?? 0) ?></p></div>
+            <div class="stat-card"><h3>Total Revenue</h3><p>$<?= number_format($totals['total_revenue'] ?? 0, 2) ?></p></div>
+            <div class="stat-card"><h3>Avg Order Value</h3><p>$<?= number_format(($totals['total_revenue'] ?? 0) / max(1, $totals['total_orders']), 2) ?></p></div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="charts">
+            <div class="chart-box">
+                <h3>Revenue by Category</h3>
+                <canvas id="revenueChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3>Units Sold by Category</h3>
+                <canvas id="unitsChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Category Table -->
+        <h3 style="margin:1.5rem 0 1rem;">📋 Category Performance</h3>
+        <table>
+            <thead><tr><th>Category</th><th>Orders</th><th>Units Sold</th><th>Revenue</th><th>Avg Price</th><th>Stock Health</th></tr></thead>
+            <tbody>
+                <?php foreach($categoryStats as $c): 
+                    $stock = $stockByCat[$c['category']] ?? [];
+                    $health = ($stock['out_of_stock'] ?? 0) > 0 ? 'danger' : (($stock['low_stock'] ?? 0) > 0 ? 'warning' : 'success');
+                ?>
+                <tr>
+                    <td><strong><?= ucfirst($c['category']) ?></strong></td>
+                    <td><?= $c['orders'] ?></td>
+                    <td><?= $c['units'] ?></td>
+                    <td><strong>$<?= number_format($c['revenue'], 2) ?></strong></td>
+                    <td>$<?= number_format($c['avg_price'], 2) ?></td>
+                    <td><span class="badge <?= $health ?>"><?= 
+                        $health === 'danger' ? '⚠️ Out of Stock' : 
+                        ($health === 'warning' ? '🔶 Low Stock' : '✅ Healthy') 
+                    ?></span></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        
+        <!-- Top Products by Category -->
+        <h3 style="margin:1.5rem 0 1rem;">🏆 Top Products by Category</h3>
+        <div class="top-grid">
+            <?php foreach($topProducts as $cat => $products): ?>
+            <div class="top-card">
+                <h4><?= ucfirst($cat) ?></h4>
+                <?php if(empty($products)): ?>
+                    <p style="color:var(--mut);font-size:.9rem;">No sales in this period.</p>
+                <?php else: ?>
+                    <ol>
+                        <?php foreach($products as $p): ?>
+                        <li>
+                            <?= htmlspecialchars($p['name']) ?>
+                            <br><small>📦 <?= $p['sold'] ?> sold • 💰 $<?= number_format($p['rev'],2) ?></small>
+                        </li>
+                        <?php endforeach; ?>
+                    </ol>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <script>
+        // 📈 Revenue Chart
+        const revCtx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(revCtx, {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode(array_map(fn($c)=>ucfirst($c['category']), $categoryStats)) ?>,
+                datasets: [{
+                    label: 'Revenue ($)',
+                    data: <?= json_encode(array_map(fn($c)=>floatval($c['revenue']), $categoryStats)) ?>,
+                    backgroundColor: 'rgba(128, 0, 0, 0.7)',
+                    borderColor: '#800000',
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v.toLocaleString() } } } }
+        });
+
+        // 📦 Units Chart
+        const unitsCtx = document.getElementById('unitsChart').getContext('2d');
+        new Chart(unitsCtx, {
+            type: 'doughnut',
+            data: {
+                labels: <?= json_encode(array_map(fn($c)=>ucfirst($c['category']), $categoryStats)) ?>,
+                datasets: [{
+                    data: <?= json_encode(array_map(fn($c)=>intval($c['units']), $categoryStats)) ?>,
+                    backgroundColor: ['#800000','#A52A2A','#B22222','#CD5C5C']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    </script>
+</body>
+</html>
