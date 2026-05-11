@@ -43,7 +43,7 @@ try {
             VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE quantity = quantity + 1
         ")->execute([$cartId, $productId]);
         
-        $redirect = "user/cart.php?msg=added";
+        $redirect = $_SERVER['HTTP_REFERER'] ?? "index.php";
     }
 } catch (Exception $e) {
     error_log("Cart/Wishlist Error: " . $e->getMessage());

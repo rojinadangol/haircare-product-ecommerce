@@ -5,8 +5,6 @@ $stats = [
     'users'    => $pdo->query("SELECT COUNT(*) FROM users WHERE role='user'")->fetchColumn(),
     'admins'   => $pdo->query("SELECT COUNT(*) FROM users WHERE role='admin'")->fetchColumn()
 ];
-$unreadNotifs = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id IS NULL AND is_read = 0")->fetchColumn();
-
 // Fetch all active user carts with item counts & totals
 $stmt = $pdo->query("
     SELECT c.id, c.user_id, u.email, u.first_name, COUNT(ci.id) as item_count, SUM(ci.quantity * p.price) as cart_total
@@ -44,24 +42,7 @@ $activeCarts = $stmt->fetchAll();
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
         body { background: var(--bg); color: var(--txt); display: flex; min-height: 100vh; }
 
-        /* Sidebar */
-        .sidebar {
-            width: 250px; background: var(--accent); border-right: 4px solid var(--accent-hover);
-            padding: 1.5rem; position: fixed; height: 100vh; display: flex; flex-direction: column;
-            box-shadow: 2px 0 10px rgba(128, 0, 0, 0.1);
-        }
-        .sidebar h2 { font-size: 1.3rem; margin-bottom: 2rem; letter-spacing: 1px; color: #FFFFFF; font-weight: 700; }
-        .sidebar a {
-            display: block; padding: 0.85rem 1rem; margin-bottom: 0.5rem; text-decoration: none;
-            color: rgba(255, 255, 255, 0.85); border-radius: 8px; transition: all 0.2s ease; font-weight: 500;
-        }
-        .sidebar a:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
-        .sidebar a.active { background: #FFFFFF; color: var(--accent); font-weight: 600; }
-        .sidebar .logout { margin-top: auto; color: #FFD1D1; border: 1px solid rgba(255,255,255,0.3); }
-        .sidebar .logout:hover { background: var(--accent-hover); color: #fff; border-color: transparent; }
 
-        /* Main Content */
-        .main { margin-left: 250px; flex: 1; padding: 2rem; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .header h1 { font-size: 1.8rem; font-weight: 700; color: var(--txt); }
         .header span { color: var(--accent); font-size: 0.95rem; background: var(--accent-light); padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 500; }
@@ -124,27 +105,12 @@ $activeCarts = $stmt->fetchAll();
 
         /* Responsive */
         @media(max-width: 768px) {
-            .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; align-items: center; padding: 1rem; overflow-x: auto; }
-            .sidebar h2 { margin-bottom: 0; margin-right: 1rem; font-size: 1.1rem; white-space: nowrap; }
-            .sidebar a { margin-bottom: 0; margin-right: 0.5rem; white-space: nowrap; }
-            .main { margin-left: 0; padding: 1rem; }
             .stats { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <nav class="sidebar">
-    <h2>ADMIN</h2>
-    <a href="index.php" class="<?= basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : '' ?>"> Dashboard</a>
-    <a href="products.php" class="<?= basename($_SERVER['PHP_SELF']) == 'products.php' ? 'active' : '' ?>"> Products</a>
-    <a href="orders.php" class="<?= basename($_SERVER['PHP_SELF']) == 'orders.php' ? 'active' : '' ?>"> Orders</a>
-    <a href="notifications.php" class="<?= basename($_SERVER['PHP_SELF']) == 'notifications.php' ? 'active' : '' ?>">
-        Notifications <?= $unreadNotifs > 0 ? "<span style='background:#C62828;color:#fff;padding:.1rem .4rem;border-radius:10px;font-size:.75rem;'>$unreadNotifs</span>" : '' ?>
-    </a>
-    <a href="reviews.php" class="<?= basename($_SERVER['PHP_SELF'])=='reviews.php'?'active':'' ?>">⭐ Reviews</a>
-    <a href="analytics.php" class="<?= basename($_SERVER['PHP_SELF'])=='analytics.php'?'active':'' ?>">📊 Analytics</a>
-    <a href="../logout.php" class="logout"> Logout</a>
-</nav>
+    <?php require_once 'admin_sidebar.php'; ?>
 
     <main class="main">
         <div class="header">

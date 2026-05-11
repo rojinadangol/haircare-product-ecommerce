@@ -31,10 +31,11 @@ $notifs = $pdo->query("SELECT * FROM notifications ORDER BY created_at DESC")->f
     </style>
 </head>
 <body>
+    <?php require_once 'admin_sidebar.php'; ?>
+    <main class="main">
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <h1> Admin Notifications</h1>
-            <a href="index.php" style="color:var(--accent); text-decoration:none; font-weight:500;"> Dashboard</a>
         </div>
         <a href="?clear_all" style="display:inline-block;margin-bottom:1rem;color:var(--mut);font-size:.9rem;">Mark all as read</a>
         <?php if(empty($notifs)): ?>
@@ -54,5 +55,6 @@ $notifs = $pdo->query("SELECT * FROM notifications ORDER BY created_at DESC")->f
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
+    </main>
 </body>
 </html>

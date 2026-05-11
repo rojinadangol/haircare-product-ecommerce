@@ -82,17 +82,7 @@ $reviews = $pdo->query("
     </style>
 </head>
 <body>
-    <nav class="sidebar">
-        <h2>ADMIN</h2>
-        <a href="index.php" class="<?= basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : '' ?>">Dashboard</a>
-        <a href="products.php" class="<?= basename($_SERVER['PHP_SELF']) == 'products.php' ? 'active' : '' ?>">Products</a>
-        <a href="orders.php" class="<?= basename($_SERVER['PHP_SELF']) == 'orders.php' ? 'active' : '' ?>">Orders</a>
-        <a href="notifications.php" class="<?= basename($_SERVER['PHP_SELF']) == 'notifications.php' ? 'active' : '' ?>">
-            Notifications <?= $unreadNotifs > 0 ? "<span style='background:#C62828;color:#fff;padding:.1rem .4rem;border-radius:10px;font-size:.75rem;'>$unreadNotifs</span>" : '' ?>
-        </a>
-        <a href="reviews.php" class="<?= basename($_SERVER['PHP_SELF']) == 'reviews.php' ? 'active' : '' ?>">⭐ Reviews</a>
-        <a href="../logout.php" class="logout">Logout</a>
-    </nav>
+    <?php require_once 'admin_sidebar.php'; ?>
 
     <main class="main">
         <div class="header">

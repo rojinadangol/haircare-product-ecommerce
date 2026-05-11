@@ -226,18 +226,7 @@ $products = $pdo->query("SELECT * FROM products ORDER BY created_at DESC")->fetc
     </style>
 </head>
 <body>
-    <nav class="sidebar">
-        <h2> ADMIN</h2>
-        <a href="index.php">Dashboard</a>
-        <a href="products.php" class="active">Manage Products</a>
-        <a href="orders.php">Orders</a>
-        <a href="notifications.php">
-            Notifications <?= $unreadNotifs > 0 ? "<span style='background:#C62828;color:#fff;padding:.1rem .4rem;border-radius:10px;font-size:.75rem;'>$unreadNotifs</span>" : '' ?>
-        </a>
-        <a href="reviews.php" class="<?= basename($_SERVER['PHP_SELF'])=='reviews.php'?'active':'' ?>">⭐ Reviews</a>
-        <a href="analytics.php" class="<?= basename($_SERVER['PHP_SELF'])=='analytics.php'?'active':'' ?>">📊 Analytics</a>
-        <a href="../logout.php" class="logout">Logout</a>
-    </nav>
+    <?php require_once 'admin_sidebar.php'; ?>
 
     <main class="main">
         <h1 style="margin-bottom:1.5rem;"> Product Management</h1>

@@ -103,7 +103,7 @@ ob_end_clean();
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Payment Issue</title>
-<style>:root{--bg:#F5F1EB;--card:#FFF;--danger:#C62828;--bdr:#E6DFD6;}
+<style>:root{--bg:#E0D4C3;--card:#F4ECE1;--danger:#C62828;--bdr:#CDBBA6;}
 body{background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;font-family:system-ui,sans-serif;}
 .box{background:var(--card);padding:2rem;border-radius:12px;border:1px solid var(--bdr);max-width:450px;text-align:center;}
 h1{color:var(--danger);margin-bottom:.5rem;}

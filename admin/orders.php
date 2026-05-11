@@ -106,18 +106,19 @@ $counts = [
         .badge.shipped{background:#FFF3E0;color:#E65100;}
         .badge.delivered{background:#F3E5F5;color:#6A1B9A;}
         .badge.pending{background:#F5F5F5;color:#616161;}
+        .badge.paid{background:#dcfce7;color:#16a34a;}
+        .badge.failed{background:#fee2e2;color:#dc2626;}
 
         .empty{text-align:center;padding:2.5rem;color:var(--mut);background:var(--card);border-radius:8px;}
     </style>
 </head>
 <body>
+    <?php require_once 'admin_sidebar.php'; ?>
+    <main class="main">
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <h1>📦 Order Management</h1>
-            <div style="display:flex; gap:1rem;">
-                <a href="index.php" style="color:var(--accent); text-decoration:none; font-weight:500;"> Dashboard</a>
-                <a href="analytics.php" style="color:var(--accent); text-decoration:none; font-weight:500;">📊 Analytics</a>
-            </div>
+
         </div>
         
         <!-- Status Tabs -->
@@ -140,7 +141,7 @@ $counts = [
         <?php else: ?>
             <div style="overflow-x:auto;">
                 <table>
-                    <thead><tr><th>Order #</th><th>Delivery Code</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+                    <thead><tr><th>Order #</th><th>Delivery Code</th><th>Customer</th><th>Total</th><th>Status</th><th>Payment</th><th>Date</th><th>Action</th></tr></thead>
                     <tbody>
                         <?php foreach($orders as $o): ?>
                         <tr>
@@ -149,6 +150,10 @@ $counts = [
                             <td><?= htmlspecialchars($o['first_name']) ?><br><small style="color:var(--mut)"><?= htmlspecialchars($o['email']) ?></small></td>
                             <td>$<?= number_format($o['total'],2) ?></td>
                             <td><span class="badge <?= $o['status'] ?>"><?= ucfirst($o['status']) ?></span></td>
+                            <td>
+                                <strong><?= strtoupper($o['payment_method']) ?></strong><br>
+                                <span class="badge <?= $o['payment_status'] ?>"><?= ucfirst($o['payment_status'] == 'pending' ? 'Unpaid' : $o['payment_status']) ?></span>
+                            </td>
                             <td><?= date('M d, Y', strtotime($o['created_at'])) ?></td>
                             <td>
                                 <form method="POST" style="display:flex;gap:.3rem;">
@@ -169,5 +174,6 @@ $counts = [
             </div>
         <?php endif; ?>
     </div>
+    </main>
 </body>
 </html>

@@ -51,7 +51,7 @@ $pdo->prepare("UPDATE orders SET esewa_transaction_uuid = ? WHERE id = ?")
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pay with eSewa — Lumière</title>
 <style>
-:root { --bg:#F5F1EB; --card:#FFF; --accent:#C8B9A5; --accent-h:#A89580; --txt:#3A3532; --mut:#7A726C; --bdr:#E6DFD6; }
+:root { --bg:#E0D4C3; --card:#F4ECE1; --accent:#A89078; --accent-h:#8F7963; --txt:#3A3532; --mut:#7A726C; --bdr:#CDBBA6; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
 .card { background: var(--card); border-radius: 16px; box-shadow: 0 4px 32px rgba(0,0,0,.06); padding: 40px 32px; max-width: 420px; width: 100%; text-align: center; border: 1px solid var(--bdr); }

@@ -1,11 +1,18 @@
 <?php require_once 'admin_check.php'; ?>
 <?php
-// 🔹 Date Range Filter
-$dateFrom = $_GET['from'] ?? date('Y-m-01');
-$dateTo   = $_GET['to'] ?? date('Y-m-d');
+// 🔹 Timeline Analytics Query (Daily Revenue)
+$timelineStmt = $pdo->query("
+    SELECT DATE(o.created_at) as date, SUM(oi.quantity * oi.price) as daily_revenue
+    FROM orders o
+    JOIN order_items oi ON o.id = oi.order_id
+    WHERE o.status IN ('confirmed','processing','shipped','delivered')
+    GROUP BY DATE(o.created_at)
+    ORDER BY date ASC
+");
+$timelineData = $timelineStmt->fetchAll();
 
 // 🔹 Category Analytics Query
-$catStmt = $pdo->prepare("
+$catStmt = $pdo->query("
     SELECT 
         p.category,
         COUNT(DISTINCT o.id) as orders,
@@ -15,26 +22,22 @@ $catStmt = $pdo->prepare("
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     JOIN products p ON oi.product_id = p.id
-    WHERE o.created_at BETWEEN ? AND ? 
-      AND o.status IN ('confirmed','processing','shipped','delivered')
+    WHERE o.status IN ('confirmed','processing','shipped','delivered')
     GROUP BY p.category
     ORDER BY revenue DESC
 ");
-$catStmt->execute([$dateFrom, $dateTo]);
 $categoryStats = $catStmt->fetchAll();
 
 // 🔹 Overall Stats
-$overall = $pdo->prepare("
+$overall = $pdo->query("
     SELECT 
         COUNT(DISTINCT o.id) as total_orders,
         SUM(oi.quantity) as total_units,
         SUM(oi.quantity * oi.price) as total_revenue
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
-    WHERE o.created_at BETWEEN ? AND ? 
-      AND o.status IN ('confirmed','processing','shipped','delivered')
+    WHERE o.status IN ('confirmed','processing','shipped','delivered')
 ");
-$overall->execute([$dateFrom, $dateTo]);
 $totals = $overall->fetch();
 
 // 🔹 Top Products by Category
@@ -45,11 +48,10 @@ foreach(['shampoo','conditioner','treatment','hair oil'] as $cat) {
         FROM order_items oi
         JOIN products p ON oi.product_id = p.id
         JOIN orders o ON oi.order_id = o.id
-        WHERE p.category = ? AND o.created_at BETWEEN ? AND ?
-          AND o.status IN ('confirmed','processing','shipped','delivered')
+        WHERE p.category = ? AND o.status IN ('confirmed','processing','shipped','delivered')
         GROUP BY p.id ORDER BY sold DESC LIMIT 3
     ");
-    $stmt->execute([$cat, $dateFrom, $dateTo]);
+    $stmt->execute([$cat]);
     $topProducts[$cat] = $stmt->fetchAll();
 }
 
@@ -68,7 +70,7 @@ $stockByCat = array_column($stockStats, null, 'category');
 // 🔹 CSV Export Handler
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="category-analytics-' . date('Y-m-d') . '.csv"');
+    header('Content-Disposition: attachment; filename="business-analytics-' . date('Y-m-d') . '.csv"');
     $out = fopen('php://output', 'w');
     fputcsv($out, ['Category', 'Orders', 'Units Sold', 'Revenue', 'Avg Price']);
     foreach ($categoryStats as $row) {
@@ -98,22 +100,22 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
         .container{max-width:1200px;margin:0 auto;}
         h1{margin-bottom:1rem;color:var(--accent);}
         
-        /* Filters */
-        .filters{background:var(--card);padding:1rem;border-radius:8px;border:1px solid var(--bdr);margin-bottom:1.5rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;}
-        .filters input{padding:.5rem;border:1px solid var(--bdr);border-radius:6px;}
-        .filters button{background:var(--accent);color:#fff;padding:.5rem 1rem;border:none;border-radius:6px;cursor:pointer;}
-        .filters button:hover{background:var(--accent-h);}
-        .export-btn{background:var(--success);margin-left:auto;}
+        /* Header Actions */
+        .header-actions{background:var(--card);padding:1rem;border-radius:8px;border:1px solid var(--bdr);margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;}
+        .header-actions p{color:var(--mut); font-weight:500;}
+        .export-btn{background:var(--success);color:#fff;padding:.5rem 1rem;border-radius:6px;text-decoration:none;font-weight:500;transition: background 0.2s;}
+        .export-btn:hover{background:#3d664a;}
         
         /* Stats Grid */
         .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem;}
         .stat-card{background:var(--card);padding:1.2rem;border-radius:8px;border:1px solid var(--bdr);text-align:center;}
-        .stat-card h3{font-size:.85rem;color:var(--mut);margin-bottom:.3rem;}
+        .stat-card h3{font-size:.85rem;color:var(--mut);margin-bottom:.3rem;text-transform:uppercase;}
         .stat-card p{font-size:1.8rem;font-weight:700;color:var(--accent);}
         
         /* Charts */
+        .charts-full{margin-bottom:1.5rem;}
         .charts{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;}
-        .chart-box{background:var(--card);padding:1rem;border-radius:8px;border:1px solid var(--bdr);}
+        .chart-box{background:var(--card);padding:1.5rem;border-radius:8px;border:1px solid var(--bdr);box-shadow:0 2px 8px rgba(0,0,0,0.02);}
         .chart-box h3{margin-bottom:1rem;font-size:1rem;color:var(--txt);}
         
         /* Tables */
@@ -127,26 +129,26 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
         
         /* Top Products */
         .top-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;}
-        .top-card{background:var(--card);padding:1rem;border-radius:8px;border:1px solid var(--bdr);}
-        .top-card h4{margin-bottom:.8rem;color:var(--accent);font-size:1rem;}
+        .top-card{background:var(--card);padding:1.5rem;border-radius:8px;border:1px solid var(--bdr);}
+        .top-card h4{margin-bottom:.8rem;color:var(--accent);font-size:1.1rem;}
         .top-card ol{padding-left:1.2rem;}
-        .top-card li{margin-bottom:.4rem;font-size:.9rem;}
+        .top-card li{margin-bottom:.6rem;font-size:.95rem;}
         .top-card small{color:var(--mut);}
         
-        @media(max-width:900px){.charts{grid-template-columns:1fr;}.filters{flex-direction:column;align-items:stretch;}.export-btn{margin-left:0;}}
+        @media(max-width:900px){.charts{grid-template-columns:1fr;}}
     </style>
 </head>
 <body>
+    <?php require_once 'admin_sidebar.php'; ?>
+    <main class="main">
     <div class="container">
-        <h1>📊 Category Business Analytics</h1>
+        <h1>📊 Business Analytics</h1>
         
-        <!-- Date Filter + Export -->
-        <form class="filters" method="GET">
-            <label>From: <input type="date" name="from" value="<?= htmlspecialchars($dateFrom) ?>"></label>
-            <label>To: <input type="date" name="to" value="<?= htmlspecialchars($dateTo) ?>"></label>
-            <button type="submit">Apply</button>
-            <a href="?from=<?= $dateFrom ?>&to=<?= $dateTo ?>&export=csv" class="export-btn" style="padding:.5rem 1rem;border-radius:6px;text-decoration:none;color:#fff;">📥 Export CSV</a>
-        </form>
+        <!-- Header Actions -->
+        <div class="header-actions">
+            <p>Showing All-Time Data</p>
+            <a href="?export=csv" class="export-btn">📥 Export CSV</a>
+        </div>
         
         <!-- Overall Stats -->
         <div class="stats-grid">
@@ -156,6 +158,14 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
             <div class="stat-card"><h3>Avg Order Value</h3><p>$<?= number_format(($totals['total_revenue'] ?? 0) / max(1, $totals['total_orders']), 2) ?></p></div>
         </div>
         
+        <!-- Full Width Line Chart -->
+        <div class="charts-full">
+            <div class="chart-box">
+                <h3>Revenue Over Time (Daily)</h3>
+                <canvas id="timelineChart" height="80"></canvas>
+            </div>
+        </div>
+
         <!-- Charts -->
         <div class="charts">
             <div class="chart-box">
@@ -189,6 +199,9 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                     ?></span></td>
                 </tr>
                 <?php endforeach; ?>
+                <?php if(empty($categoryStats)): ?>
+                    <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--mut);">No data available.</td></tr>
+                <?php endif; ?>
             </tbody>
         </table>
         
@@ -199,7 +212,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
             <div class="top-card">
                 <h4><?= ucfirst($cat) ?></h4>
                 <?php if(empty($products)): ?>
-                    <p style="color:var(--mut);font-size:.9rem;">No sales in this period.</p>
+                    <p style="color:var(--mut);font-size:.9rem;">No sales data available.</p>
                 <?php else: ?>
                     <ol>
                         <?php foreach($products as $p): ?>
@@ -216,7 +229,51 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     </div>
 
     <script>
-        // 📈 Revenue Chart
+        // Set default Chart.js font
+        Chart.defaults.font.family = "system-ui, sans-serif";
+
+        // 📈 Timeline Chart (Line)
+        const timelineData = <?= json_encode($timelineData) ?>;
+        const timelineLabels = timelineData.map(d => d.date);
+        const timelineRevenues = timelineData.map(d => parseFloat(d.daily_revenue));
+        
+        const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+        new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                labels: timelineLabels,
+                datasets: [{
+                    label: 'Daily Revenue ($)',
+                    data: timelineRevenues,
+                    borderColor: '#800000',
+                    backgroundColor: 'rgba(128, 0, 0, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4, // Smooth curve
+                    pointBackgroundColor: '#800000',
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { callback: v => '$' + v.toLocaleString() },
+                        grid: { color: '#E6D5D5', borderDash: [5, 5] }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                } 
+            }
+        });
+
+        // 📈 Revenue Chart (Bar)
         const revCtx = document.getElementById('revenueChart').getContext('2d');
         new Chart(revCtx, {
             type: 'bar',
@@ -225,15 +282,27 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                 datasets: [{
                     label: 'Revenue ($)',
                     data: <?= json_encode(array_map(fn($c)=>floatval($c['revenue']), $categoryStats)) ?>,
-                    backgroundColor: 'rgba(128, 0, 0, 0.7)',
+                    backgroundColor: 'rgba(128, 0, 0, 0.8)',
                     borderColor: '#800000',
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderRadius: 4
                 }]
             },
-            options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v.toLocaleString() } } } }
+            options: { 
+                responsive: true, 
+                plugins: { legend: { display: false } },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { callback: v => '$' + v.toLocaleString() },
+                        grid: { color: '#E6D5D5' }
+                    },
+                    x: { grid: { display: false } }
+                } 
+            }
         });
 
-        // 📦 Units Chart
+        // 📦 Units Chart (Doughnut)
         const unitsCtx = document.getElementById('unitsChart').getContext('2d');
         new Chart(unitsCtx, {
             type: 'doughnut',
@@ -241,11 +310,17 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                 labels: <?= json_encode(array_map(fn($c)=>ucfirst($c['category']), $categoryStats)) ?>,
                 datasets: [{
                     data: <?= json_encode(array_map(fn($c)=>intval($c['units']), $categoryStats)) ?>,
-                    backgroundColor: ['#800000','#A52A2A','#B22222','#CD5C5C']
+                    backgroundColor: ['#800000','#B22222','#CD5C5C', '#E6A5A5', '#F4EAEA'],
+                    borderWidth: 0
                 }]
             },
-            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            options: { 
+                responsive: true, 
+                plugins: { legend: { position: 'bottom' } },
+                cutout: '65%' 
+            }
         });
     </script>
+    </main>
 </body>
 </html>

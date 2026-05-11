@@ -28,20 +28,20 @@ if ($cart) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Account | Lumière</title>
     <style>
-        :root { --bg:#F5F1EB; --card:#FFF; --accent:#C8B9A5; --accent-h:#A89580; --txt:#3A3532; --mut:#7A726C; --bdr:#E6DFD6; }
+        :root { --bg:#E0D4C3; --card:#F4ECE1; --accent:#A89078; --accent-h:#8F7963; --txt:#3A3532; --mut:#7A726C; --bdr:#CDBBA6; }
         * { box-sizing:border-box; margin:0; padding:0; font-family:system-ui,-apple-system,sans-serif; }
         body { background:var(--bg); color:var(--txt); min-height:100vh; display:flex; flex-direction:column; }
         
         /* Top Header */
         header { background:var(--card); padding:.8rem 5%; border-bottom:1px solid var(--bdr); }
-        .top-nav { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+        .top-nav { width:100%; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
         .logo { font-size:1.4rem; font-weight:700; letter-spacing:1px; color:var(--txt); text-decoration:none; }
         .top-links a { text-decoration:none; color:var(--mut); margin-left:1.5rem; font-weight:500; font-size:.9rem; }
         .top-links a:hover { color:var(--txt); }
         .btn-sm { background:var(--accent); color:#fff; padding:.4rem 1rem; border-radius:50px; text-decoration:none; font-weight:500; font-size:.85rem; }
         
         /* Dashboard Layout */
-        .dash-wrapper { display:flex; max-width:1200px; margin:2rem auto; padding:0 1.5rem; gap:2rem; flex:1; }
+        .dash-wrapper { display:flex; width:100%; margin:2rem 0; padding:0 5%; gap:2rem; flex:1; box-sizing:border-box; }
         
         /* Sidebar */
         .sidebar { width:240px; background:var(--card); border:1px solid var(--bdr); border-radius:12px; padding:1.5rem; height:fit-content; position:sticky; top:2rem; }
@@ -125,7 +125,7 @@ if ($cart) {
                     <p>Track deliveries & invoices</p>
                 </a>
                 <a href="profile.php" class="func-card">
-                    <span class="icon"> </span>
+                    <span class="icon">👤</span>
                     <h3>Profile & Settings</h3>
                     <p>Update name, email & password</p>
                 </a>

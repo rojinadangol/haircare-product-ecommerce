@@ -103,7 +103,7 @@ $total = $subtotal + $tax + $shipping;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Cart | Lumière</title>
     <style>
-        :root { --bg:#F5F1EB; --card:#FFF; --accent:#C8B9A5; --accent-h:#A89580; --txt:#3A3532; --mut:#7A726C; --bdr:#E6DFD6; --danger:#C62828; }
+        :root { --bg:#E0D4C3; --card:#F4ECE1; --accent:#A89078; --accent-h:#8F7963; --txt:#3A3532; --mut:#7A726C; --bdr:#CDBBA6; --danger:#C62828; }
         * { box-sizing:border-box; margin:0; padding:0; font-family:system-ui,-apple-system,sans-serif; }
         body { background:var(--bg); color:var(--txt); line-height:1.6; }
         header { background:var(--card); padding:1rem 5%; border-bottom:1px solid var(--bdr); }
@@ -169,7 +169,13 @@ $total = $subtotal + $tax + $shipping;
                 <h2 style="margin-bottom:1.5rem;">Shopping Cart (<?= count($cartItems) ?>)</h2>
                 <?php foreach ($cartItems as $item): ?>
                     <div class="item">
-                        <img src="<?= htmlspecialchars($item['image_url']) ?: 'https://placehold.co/80x80/EAE3D9/7A726C?text=Img' ?>" alt="<?= htmlspecialchars($item['name']) ?>">
+                        <?php 
+                            $imgUrl = $item['image_url'];
+                            if ($imgUrl && !preg_match('/^https?:\/\//', $imgUrl)) {
+                                $imgUrl = '../' . ltrim($imgUrl, '/');
+                            }
+                        ?>
+                        <img src="<?= htmlspecialchars($imgUrl) ?: 'https://placehold.co/80x80/EAE3D9/7A726C?text=Img' ?>" alt="<?= htmlspecialchars($item['name']) ?>">
                         <div class="item-info">
                             <h3><?= htmlspecialchars($item['name']) ?></h3>
                             <p class="price">$<?= number_format($item['price'], 2) ?> each</p>

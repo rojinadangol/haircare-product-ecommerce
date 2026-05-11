@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Write Review | Lumière</title>
     <style>
-        :root { --bg:#F5F1EB; --card:#FFF; --accent:#C8B9A5; --accent-h:#A89580; --txt:#3A3532; --mut:#7A726C; --bdr:#E6DFD6; --danger:#C62828; }
+        :root { --bg:#E0D4C3; --card:#F4ECE1; --accent:#A89078; --accent-h:#8F7963; --txt:#3A3532; --mut:#7A726C; --bdr:#CDBBA6; --danger:#C62828; }
         * { box-sizing:border-box; margin:0; padding:0; font-family:system-ui,sans-serif; }
         body { background:var(--bg); color:var(--txt); display:flex; justify-content:center; align-items:center; min-height:100vh; padding:1rem; }
         .box { background:var(--card); padding:2rem; border-radius:12px; width:100%; max-width:500px; border:1px solid var(--bdr); }
